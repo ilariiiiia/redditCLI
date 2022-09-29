@@ -1,0 +1,6 @@
+Pillow~=9.2.0
+python-dotenv~=0.21.0
+praw~=7.6.0
+requests~=2.28.1
+tabulate~=0.8.10
+numerize~=0.12
