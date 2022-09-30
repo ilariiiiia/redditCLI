@@ -15,12 +15,13 @@ reddit = praw.Reddit(
     client_id=os.environ["client_id"],
     client_secret=os.environ["client_secret"],
     password=os.environ["pw"],
-    username="nicolello_iiiii",
-    user_agent="test by nicolello_iiiii"
+    username=os.environ["user_name"],
+    user_agent=os.environ["user_agent"]
 )
 
 resize = True
 size = 80
+
 
 def upvote(s):
     s.upvote()
@@ -52,10 +53,11 @@ def unsave(s):
     print("post unsaved!")
 
 
-def help_crosspost(s): # TODO
+def help_crosspost(s):
     print("""
-    Usage:
+    Usage: crosspost {name of the subreddit without r/}
     """)
+
 
 def helpme(s):
     print("""
@@ -72,7 +74,6 @@ def helpme(s):
 
 
 def help_award(s):
-
     print("usage: award {gild type} {is_anonymous} {message} \n gild type: see table below \n is_anonymous: If True, "
           "the authenticated user’s username will not be revealed to the recipient \n message: the message to be sent "
           "with the award \n \n")
@@ -97,7 +98,6 @@ def help_award(s):
 commands = {"upvote": upvote,
             "downvote": downvote,
             "clear vote": clear_vote,
-            "crosspost": crosspost,
             "save": save,
             "unsave": unsave,
             "help-award": help_award,
@@ -110,35 +110,6 @@ def main():
     while True:
         submissions = reddit.subreddit("all").hot(limit=10)
         for submission in submissions:
-
-            if init:
-                init = False
-
-            else:
-                a = ""
-                while a != "next":
-                    if a.startswith("award"):
-                        try:
-                            args = a.split(" ", maxsplit=4)
-                            submission.award(gild_type=args[1], is_anonymous=args[2], message=args[3])
-                        except Exception as e:
-                            print(f"Error while parsing the command. Error details: \n {e}")
-                    elif a.startswith("var"):
-                        try:
-                            args = a.split(" ", maxsplit=3)
-                            exec(f"{args[1]} = {args[2]}")
-                        except Exception as e:
-                            print(f"Error while parsing the command. Error details: \n {e}")
-                    else:
-                        try:
-                            fun = commands[a]
-                            try:
-                                fun(submission)
-                            except Exception as e:
-                                print(f"Error while parsing the command. Error details: \n {e}")
-                        except KeyError:
-                            if a != '': print("Error: unknown command")
-                    a = input("Command please. Type 'help' for help: ")
 
             try:
                 if submission.polldata:
@@ -207,6 +178,37 @@ Permalink: https://reddit.com{submission.permalink}
 
                                         """
                     )
+            a = ""
+            while a != "next":
+                a = input("Command please. Type 'help' for help: ")
+                if a.startswith("award"):
+                    try:
+                        args = a.split(" ", maxsplit=4)
+                        submission.award(gild_type=args[1], is_anonymous=args[2], message=args[3])
+                    except Exception as e:
+                        print(f"Error while parsing the command. Error details: \n {e}")
+                elif a.startswith("var"):
+                    try:
+                        args = a.split(" ", maxsplit=3)
+                        exec(f"{args[1]} = {args[2]}")
+                    except Exception as e:
+                        print(f"Error while parsing the command. Error details: \n {e}")
+                elif a.startswith("crosspost"):
+                    try:
+                        args = a.split(" ", maxsplit=2)
+                        submission.crosspost(args[1])
+                    except Exception as e:
+                        print(f"Error while parsing the command. Error details: \n {e}")
+                else:
+                    try:
+                        fun = commands[a]
+                        try:
+                            fun(submission)
+                        except Exception as e:
+                            print(f"Error while parsing the command. Error details: \n {e}")
+                    except KeyError:
+                        if a != '':
+                            print("Error: unknown command")
 
 
 if __name__ == '__main__':
