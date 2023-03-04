@@ -3,11 +3,14 @@ from datetime import datetime
 from PIL import Image
 from numerize import numerize
 from img2txt import convert
+from functions import *
+from config import Config
 import dotenv
 import os
 import praw
 import requests
-import tabulate
+
+c = Config()
 
 dotenv.load_dotenv(r"secrets.env")
 
@@ -23,77 +26,6 @@ resize = True
 size = 80
 
 
-def upvote(s):
-    s.upvote()
-    print("post upvoted!")
-
-
-def downvote(s):
-    s.downvote()
-    print("post downvoted!")
-
-
-def clear_vote(s):
-    s.clear_vote()
-    print("cleared vote!")
-
-
-def crosspost(s):
-    s.crosspost(input("Please input the subreddit to crosspost in:"))
-    print("Successfully crossposted!")
-
-
-def save(s):
-    s.save()
-    print("post saved!")
-
-
-def unsave(s):
-    s.unsave()
-    print("post unsaved!")
-
-
-def help_crosspost(s):
-    print("""
-    Usage: crosspost {name of the subreddit without r/}
-    """)
-
-
-def helpme(s):
-    print("""
-    Possible commands:
-    next: goes to the next post
-    up/downvote: up/downvotes the current post
-    award: awards the current post. Type "help-award" for more info
-    clear vote: clears the vote
-    crosspost: crossposts the current post in another community. Type "help-crosspost" for more info
-    save: saves the post
-    unsave: unsaves the post
-    var: changes program variables. Usage: var {variable to be changed} {new value}
-    """)
-
-
-def help_award(s):
-    print("usage: award {gild type} {is_anonymous} {message} \n gild type: see table below \n is_anonymous: If True, "
-          "the authenticated user’s username will not be revealed to the recipient \n message: the message to be sent "
-          "with the award \n \n")
-
-    with open("awards.txt", 'r') as infile:
-        res = []
-        i = -1
-        for line in infile.readlines():
-            if line == '\n':
-                continue
-            i += 1
-            if i % 5 == 0:  # name
-                res.append([line])
-            else:
-                res[-1].append(line)
-
-        print(
-            tabulate.tabulate(res, headers=["Name", "Icon", "Award type", "Description", "Cost"])
-        )
-
 
 commands = {"upvote": upvote,
             "downvote": downvote,
@@ -102,15 +34,17 @@ commands = {"upvote": upvote,
             "unsave": unsave,
             "help-award": help_award,
             "help-crosspost": help_crosspost,
-            "help": helpme}
+            "help": helpme,
+            "settings": settings}
 
 
 def main():
     init = True
     while True:
-        submissions = reddit.subreddit("all").hot(limit=10)
+        submissions = reddit.subreddit(c.c.get("app", "subreddit")).hot(limit=100)
         for submission in submissions:
-
+            if submission.over_18 and not c.c.get("user", "NSFW"):
+                continue
             try:
                 if submission.polldata:
                     print(
@@ -124,8 +58,6 @@ Permalink: https://reddit.com{submission.permalink}
                                         
                                         """
                     )
-
-                    continue
             except AttributeError:  # not a poll
                 if submission.is_self:  # text only post
                     print(
@@ -141,8 +73,7 @@ Permalink: https://reddit.com{submission.permalink}
                                         
                                         """
                     )
-                    continue
-                if submission.url != submission.permalink:  # video, photo or link post
+                elif submission.url != submission.permalink or 'https://'+submission.url[22:] != submission.permalink:  # video, photo or link post
 
                     if submission.url.startswith("https://i.redd.it"):  # photo post
                         subphoto = convert.Convert(
@@ -165,22 +96,23 @@ Permalink: https://reddit.com{submission.permalink}
 
                                         """
                         )
-                        continue
-
-                    print(
-                        f"""
-
-Video/link post in r/{submission.subreddit}
-{submission.title}; {numerize.numerize(submission.score)} votes ({submission.upvote_ratio})
-Post link: {submission.url}
-Created: {datetime.fromtimestamp(submission.created_utc)}
-Permalink: https://reddit.com{submission.permalink}
-
-                                        """
-                    )
+                    else:
+                        print(
+                            f"""
+    
+    Video/link post in r/{submission.subreddit}
+    {submission.title}; {numerize.numerize(submission.score)} votes ({submission.upvote_ratio})
+    Post link: {submission.url}
+    Created: {datetime.fromtimestamp(submission.created_utc)}
+    Permalink: https://reddit.com{submission.permalink}
+    
+                                            """
+                        )
             a = ""
             while a != "next":
                 a = input("Command please. Type 'help' for help: ")
+                if a == "next":
+                    continue
                 if a.startswith("award"):
                     try:
                         args = a.split(" ", maxsplit=4)
